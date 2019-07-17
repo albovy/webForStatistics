@@ -46,16 +46,8 @@ public class Manager {
         return new AtomicInteger(1); //new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
     }
 
-    private void teeNormalHotelValues(Object... values) {
-        List<Object> allValues = new ArrayList<>(Arrays.asList(values));
-        csvDatasetWriter.addRow(allValues.toArray());
-        csvDatasetWriter.flushAndClose();
-    }
 
     public void run() throws IOException {
-        /*System.out.println("cargando");
-        CSVDatasetReader csvReader = new CSVDatasetReader("postalcat.csv");
-        Dataset set = csvReader.loadFile();*/
 
         HashMap<String, Object> defCsv = new LinkedHashMap<>();
         defCsv.put("idComment", 0);
@@ -68,20 +60,14 @@ public class Manager {
         defCsv.put("totalValoration", 0);
         defCsv.put("individualValoration", 0);
         defCsv.put("#comment", 0);
+        defCsv.put("tituloComentario","");
         defCsv.put("stayType", 0);
         defCsv.put("comment", 0);
         defCsv.put("consejos","");
+        defCsv.put("votosUtilesComentario",0);
         defCsv.put("date", 0);
 
         String[] columns = defCsv.keySet().toArray(new String[0]);
-        /*List<String> l2 = new ArrayList<>(defCsv.keySet());
-        for (int i= 5; i<defCsv.size()-2;i++){
-            System.out.println(l2.get(i));
-        }
-        String[] columns = defCsv.keySet().toArray(new String[0]);
-        for (String s: defCsv.keySet()){
-            System.out.println(s);
-        }*/
         csvDatasetWriter.addColumns(columns, defCsv.values().toArray());
 
 
@@ -157,9 +143,11 @@ public class Manager {
                 defCsv.remove("totalValoration");
                 defCsv.remove("individualValoration");
                 defCsv.remove("#comment");
+                defCsv.remove("tituloComentario");
                 defCsv.remove("stayType");
                 defCsv.remove("comment");
                 defCsv.remove("consejos");
+                defCsv.remove("votosUtilesComentario");
                 defCsv.remove("date");
                 List<String> list = new ArrayList<>(defCsv.keySet());
                 String key;
@@ -173,15 +161,17 @@ public class Manager {
                     }
                 }
                 for (String str : hotelServices) {
-                    csvDatasetWriter.insertColumnAt(str, 0, csvDatasetWriter.getColumnCount() - 7);
+                    csvDatasetWriter.insertColumnAt(str, 0, csvDatasetWriter.getColumnCount() - 8);
                     defCsv.put(str, 1);
                 }
                 defCsv.put("totalValoration", 0);
                 defCsv.put("individualValoration", 0);
                 defCsv.put("#comment", 0);
+                defCsv.put("tituloComentario","");
                 defCsv.put("stayType", 0);
                 defCsv.put("comment", 0);
                 defCsv.put("consejos","");
+                defCsv.put("votosUtilesComentario",0);
                 defCsv.put("date", 0);
                 System.out.println("llegoooooooooooooooooooooooooooooooo");
                 //Opinions total evaluation
@@ -192,7 +182,6 @@ public class Manager {
                     System.out.println(evaluation+" valoración");
                 }
                 defCsv.put("totalValoration", evaluation);
-                //    evaluation = Integer.parseInt(hotelDoc.getElementsByClass("hotels-hotel-review-about-with-photos-Reviews__overallRating--vElGA").text().substring(0, 1));
 
                 AtomicInteger numPages = this.getNumPagesFromHotel(hotelDoc);
                 //Split the url to go to next pages with comment
@@ -201,12 +190,6 @@ public class Manager {
                 URL nextPageUrl;
                 //Need a document for parse the new page
                 Document nextPageDoc;
-                /*System.out.println(idLocation);
-                System.out.println(nameLocation);
-                System.out.println(idHotel);
-                System.out.println(nameHotel);
-                System.out.println(catHotel);
-                System.out.println(evaluation);*/
 
                 //Url of a comment
                 URL commentPage;
@@ -225,7 +208,6 @@ public class Manager {
                 Integer idUrlComment;
                 while ((n = numPages.getAndDecrement()) >= 1) {
                     //Assignation of the page
-
                     nextPageUrl = new URL(urlSplitted[0] + "Reviews-or" + (n * 5 - 5) + urlSplitted[1]);
                     //Declaration of the parser
                     nextPageDoc = Jsoup.connect(nextPageUrl.toExternalForm()).userAgent("Chrome").timeout(100000).get();
@@ -235,30 +217,23 @@ public class Manager {
                         commentPage = new URL(String.format("%s://%s%s", this.urlHotel.getProtocol(), this.urlHotel.getHost(), element.getElementsByClass("hotels-review-list-parts-ReviewTitle__reviewTitleText--3QrTy").attr("href")));
                         System.out.println(commentPage);
                         commentPageDoc = Jsoup.connect(commentPage.toExternalForm()).userAgent("Chrome").timeout(100000).get();
-                        System.out.println(commentPageDoc.getElementById("HEADING").text());
-                        /*driver.get(commentPage.toString());
-                        //Document of the Comment Page
-                        //driver = new PhantomJSDriver();
-                        commentPageDoc = Jsoup.parse(driver.getPageSource());
-                        driver.close();*/
+                        String titleComment = commentPageDoc.getElementById("HEADING").text();
+                        defCsv.put("tituloComentario",titleComment);
 
-                        Elements consejos = commentPageDoc.getElementsByClass("reviewItem inlineRoomTip");
-                        String consejosS = "";
-                        if (consejos.size() >0){
-                            System.out.println("TIENEEEEEE");
-                            consejosS = consejos.last().text().split(":")[1];
-                            System.out.println(consejosS);
+                        Elements adviceElements = commentPageDoc.getElementsByClass("reviewItem inlineRoomTip");
+                        String advice = "";
+                        if (adviceElements.size() >0){
+                            advice = adviceElements.last().text().split(":")[1];
                         }
-                        defCsv.put("consejos",consejosS);
+                        defCsv.put("consejos",advice);
 
-                        Elements cont = element.getElementsByClass("social-sections-SocialStatisticsBar__counts--35oyz social-sections-SocialStatisticsBar__item--3Fm5r");
-                        if(cont.size()>0) {
+                        Elements utilVotesElement = element.getElementsByClass("social-sections-SocialStatisticsBar__counts--35oyz social-sections-SocialStatisticsBar__item--3Fm5r");
+                        Integer utilVotesComment = 0;
+                        if(utilVotesElement.size()>0) {
+                            utilVotesComment = Integer.parseInt(utilVotesElement.text().split(" ")[0]);
 
-                            System.out.println(cont.text());
-
-                        }else{
-                            System.out.println("NO TIENE VOTOS");
                         }
+                        defCsv.put("votosUtilesComentario",utilVotesComment);
 
                         //Get date
                         date = commentPageDoc.getElementsByClass("prw_rup prw_reviews_stay_date_hsx").last().text().split(":")[1];
@@ -267,17 +242,13 @@ public class Manager {
                         personalEvaluation = Integer.parseInt(commentPageDoc.getElementsByClass("ui_bubble_rating").get(0).className()
                                 .split(" ")[1].split("_")[1]) / 10;
                         defCsv.put("individualValoration", personalEvaluation);
-                        //System.out.println(personalEvaluation);
                         typeStay = commentPageDoc.getElementsByClass("recommend-titleInline").last().text().split(":")[1];
                         defCsv.put("stayType", typeStay);
-                        //System.out.println(typeStay);
                         commentContent = commentPageDoc.getElementsByClass("fullText").first().text();
                         defCsv.put("comment", commentContent);
-                        //System.out.println(commentContent);
                         //ID comment
                         idUrlComment = Integer.parseInt(commentPage.toString().split("-")[3].substring(1));
                         defCsv.put("#comment", idUrlComment);
-                        //System.out.println(idUrlComment);
 
                         defCsv.put("idComment", idComment.getAndIncrement());
                         csvDatasetWriter.addRow(defCsv.values().toArray());
