@@ -269,21 +269,19 @@ public class Manager {
                         try {
 
                             //commentPageDoc = Jsoup.connect(commentPage.toExternalForm()).userAgent("Mozilla/5.0").get();
-
+                            driver = new FirefoxDriver();
                             do {
-                                driver = new FirefoxDriver();
                                 driver.get(commentPage.toString());
-                                Thread.sleep(2000);
+                                Thread.sleep(5000);
                                 Actions builder = new Actions(driver);
                                 driver.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
                                 WebElement webElement = driver.findElements(By.className("info_text")).get(0);
                                 //WebElement webElement1 = driver.findElement(By.className("memberOverlayRedesign")).findElement(By.tagName("a"));
                                 builder.moveToElement(webElement).click().build().perform();
-                                Thread.sleep(3000);
+                                Thread.sleep(5000);
                                 commentPageDoc = Jsoup.parse(driver.getPageSource());
-                                driver.close();
                             }while (driver.findElements(By.className("memberOverlayRedesign")).size() == 0);
-
+                            driver.close();
 
                             String titleComment = commentPageDoc.getElementById("HEADING").text();
                             defCsv.put("tituloComentario", titleComment);
