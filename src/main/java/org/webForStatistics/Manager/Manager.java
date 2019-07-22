@@ -11,6 +11,8 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
 import java.net.URL;
@@ -276,9 +278,10 @@ public class Manager {
                                 Actions builder = new Actions(driver);
                                 driver.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
                                 WebElement webElement = driver.findElements(By.className("info_text")).get(0);
+                                WebDriverWait wait = new WebDriverWait(driver,20);
                                 //WebElement webElement1 = driver.findElement(By.className("memberOverlayRedesign")).findElement(By.tagName("a"));
                                 builder.moveToElement(webElement).click().build().perform();
-                                Thread.sleep(5000);
+                                wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("body_text")));
                                 commentPageDoc = Jsoup.parse(driver.getPageSource());
                             }while (driver.findElements(By.className("memberOverlayRedesign")).size() == 0);
                             driver.close();
@@ -315,7 +318,6 @@ public class Manager {
                             idUrlComment = Integer.parseInt(commentPage.toString().split("-")[3].substring(1));
                             defCsv.put("#Comentario", idUrlComment);
                             defCsv.put("idComentario", idComment.getAndIncrement());
-
                             userElement = commentPageDoc.getElementsByClass("prw_rup prw_reviews_member_info_resp_sur").get(0);
                             username = commentPageDoc.getElementsByClass("memberOverlayRedesign g10n").get(0).child(0).attr("href").split("/")[2];
                             defCsv.put("usuario", username);
@@ -327,11 +329,11 @@ public class Manager {
                             userContributions = Integer.parseInt(userElement.getElementsByClass("badgetext").get(0).text());
                             defCsv.put("votosUtilesUsuario", userVotes);
                             defCsv.put("contribucionesUsuario", userContributions);
-                            userDoc = Jsoup.connect(userUrl + username).get();
-                            colaborationLevelElement = userDoc.getElementsByClass("level tripcollectiveinfo");
+                            colaborationLevelElement = commentPageDoc.getElementsByClass("badgeinfo");
                             colabLevel = 0;
                             if (colaborationLevelElement.size() > 0) {
-                                colabLevel = Integer.parseInt(colaborationLevelElement.text().split(" ")[3]);
+                                colabLevel = 0;
+                                System.out.println(colaborationLevelElement.text());
                             }
                             defCsv.put("nivelColaboracion", colabLevel);
 
