@@ -15,9 +15,11 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 
 public class Manager {
@@ -247,28 +249,35 @@ public class Manager {
                         URL nextPageUrl = new URL(urlSplitted[0] + "Reviews-or" + (num * 5 - 5) + urlSplitted[1]);
                         //Declaration of the parser
                         Document nextPageDoc = Jsoup.connect(nextPageUrl.toExternalForm()).userAgent("Mozilla/5.0").get().normalise();
-                        for (Element element : nextPageDoc.getElementsByClass("hotels-review-list-parts-SingleReview__mainCol--2XgHm")) {
+
+                        Elements elements = nextPageDoc.getElementsByClass("hotels-review-list-parts-SingleReview__mainCol--2XgHm");
+                        elements.stream().parallel().forEach((Element aux) -> {
                             //Create the URL of a comment
-                            URL commentPage = new URL(String.format("%s://%s%s", this.urlHotel.getProtocol(), this.urlHotel.getHost(), element.getElementsByClass("hotels-review-list-parts-ReviewTitle__reviewTitleText--3QrTy").attr("href")));
+                            URL commentPage = null;
+                            try {
+                                commentPage = new URL(String.format("%s://%s%s", this.urlHotel.getProtocol(), this.urlHotel.getHost(), aux.getElementsByClass("hotels-review-list-parts-ReviewTitle__reviewTitleText--3QrTy").attr("href")));
+                            } catch (MalformedURLException e1) {
+                                e1.printStackTrace();
+                            }
                             System.out.println(commentPage);
 
-
+                            WebDriver driver1;
                             //commentPageDoc = Jsoup.connect(commentPage.toExternalForm()).userAgent("Mozilla/5.0").get();
-                            driver = new FirefoxDriver();
-                            driver.get(commentPage.toString());
-                            WebDriverWait wait = new WebDriverWait(driver, 50);
+                            driver1 = new FirefoxDriver();
+                            driver1.get(commentPage.toString());
+                            WebDriverWait wait = new WebDriverWait(driver1, 50);
                             wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("reviewSelector")));
                             wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("date_picker_modal")));
-                            Actions builder = new Actions(driver);
-                            driver.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
-                            WebElement webElement = driver.findElements(By.className("info_text")).get(0);
+                            Actions builder = new Actions(driver1);
+                            driver1.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
+                            WebElement webElement = driver1.findElements(By.className("info_text")).get(0);
 
-                            //WebElement webElement1 = driver.findElement(By.className("memberOverlayRedesign")).findElement(By.tagName("a"));
+                            //WebElement webElement1 = driver1.findElement(By.className("memberOverlayRedesign")).findElement(By.tagName("a"));
                             builder.moveToElement(webElement).click().build().perform();
                             wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("g10n")));
 
-                            Document commentPageDoc = Jsoup.parse(driver.getPageSource());
-                            driver.close();
+                            Document commentPageDoc = Jsoup.parse(driver1.getPageSource());
+                            driver1.close();
 
                             String titleComment = commentPageDoc.getElementById("HEADING").text();
                             defCsv.put("tituloComentario", titleComment);
@@ -280,7 +289,7 @@ public class Manager {
                             }
                             defCsv.put("consejos", advice);
 
-                            Elements utilVotesElement = element.getElementsByClass("social-sections-SocialStatisticsBar__counts--35oyz social-sections-SocialStatisticsBar__item--3Fm5r");
+                            Elements utilVotesElement = aux.getElementsByClass("social-sections-SocialStatisticsBar__counts--35oyz social-sections-SocialStatisticsBar__item--3Fm5r");
                             int utilVotesComment = 0;
                             if (utilVotesElement.size() > 0) {
                                 utilVotesComment = Integer.parseInt(utilVotesElement.text().split(" ")[0]);
@@ -320,17 +329,19 @@ public class Manager {
                                 System.out.println(colaborationLevelElement.text());
                             }
                             defCsv.put("nivelColaboracion", colabLevel);
-
-                            csvDatasetWriter.addRow(defCsv.values().toArray());
-                            System.out.println("ESCRITOO");
-                            csvDatasetWriter.flushAndClose();
-
-
-                        }
+                            addRowCSV(defCsv.values().toArray());
+                        });
 
                     }
                 }
             }
         }
+    }
+
+    private void addRowCSV(Object[] objects) {
+        csvDatasetWriter.addRow(objects);
+        System.out.println("ESCRITOO");
+        csvDatasetWriter.flushAndClose();
+
     }
 }
