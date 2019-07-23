@@ -16,6 +16,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
 import java.net.URL;
+import java.rmi.server.ExportException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -40,15 +41,17 @@ public class Manager {
 
     private AtomicInteger getNumPagesFromHotel(Document doc) {
         Elements elementsNumPages = doc.getElementsByClass("pageNum");
-        return new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
+        if (elementsNumPages.size() > 0) {
+            return  new AtomicInteger(1);//new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
+        }else return new AtomicInteger(1);
     }
 
     private AtomicInteger getNumPagesHotels() {
         Elements elementsNumPages = this.docHotel.getElementsByClass("pageNum");
-        return new AtomicInteger(3); //new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
+        return new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
     }
 
-    private void initializeCST(Map<String, Object> map) {
+    private void initializeCSV(Map<String, Object> map) {
         map.put("idComentario", 0);
         map.put("#Localizacion", 0);
         map.put("nombreLocalizacion", 0);
@@ -160,9 +163,8 @@ public class Manager {
 
 
     public void run() throws IOException {
-        final String userUrl = "https://www.tripadvisor.es/members-badgecollection/";
         HashMap<String, Object> defCsv = new LinkedHashMap<>();
-        this.initializeCST(defCsv);
+        this.initializeCSV(defCsv);
         AtomicInteger numPagesHotels = this.getNumPagesHotels();
         WebDriver driver;
         AtomicInteger idComment = new AtomicInteger();
@@ -193,11 +195,11 @@ public class Manager {
                 if (!idHotels.contains(idHotel)) {
                     idHotels.add(idHotel);
                     defCsv.put("#Hotel", idHotel);
-                    Document hotelDoc;
-                    driver = new FirefoxDriver();
-                    driver.get(hotel.toString());
-                    hotelDoc = Jsoup.parse(driver.getPageSource());
-                    driver.quit();
+                    Document hotelDoc= null;
+                    do {
+                        hotelDoc = Jsoup.connect(hotel.toString()).userAgent("Mozilla").get();
+                    }while (hotelDoc.getElementsByClass("hotels-hr-about-amenities-Amenity__amenity--3fbBj").size()==0);
+
                     String province = hotelDoc.getElementsByClass("link").text().split(" ")[5];
                     defCsv.put("nombreProvincia", province);
 
@@ -260,7 +262,10 @@ public class Manager {
                        URL  nextPageUrl = new URL(urlSplitted[0] + "Reviews-or" + (num * 5 - 5) + urlSplitted[1]);
                         //Declaration of the parser
                         Document nextPageDoc = Jsoup.connect(nextPageUrl.toExternalForm()).userAgent("Mozilla/5.0").get().normalise();
-                        for (Element element : nextPageDoc.getElementsByClass("hotels-review-list-parts-SingleReview__mainCol--2XgHm")) {
+                        Elements allCommentsElements = nextPageDoc.getElementsByClass("hotels-review-list-parts-SingleReview__mainCol--2XgHm");
+                        if (allCommentsElements.size() == 0){
+                        }
+                        for (Element element : allCommentsElements) {
                             //Create the URL of a comment
                             URL commentPage = new URL(String.format("%s://%s%s", this.urlHotel.getProtocol(), this.urlHotel.getHost(), element.getElementsByClass("hotels-review-list-parts-ReviewTitle__reviewTitleText--3QrTy").attr("href")));
                             System.out.println(commentPage);
@@ -268,7 +273,6 @@ public class Manager {
                             Document commentPageDoc=null;
                             do{
                                 stop = true;
-                            //commentPageDoc = Jsoup.connect(commentPage.toExternalForm()).userAgent("Mozilla/5.0").get();
                             try {
                                 driver = new FirefoxDriver();
                                 driver.get(commentPage.toString());
