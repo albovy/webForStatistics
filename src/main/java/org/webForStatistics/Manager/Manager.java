@@ -186,6 +186,8 @@ public class Manager {
                     Document hotelDoc;
                     driver = new FirefoxDriver();
                     driver.get(hotel.toString());
+                    WebDriverWait wait2 = new WebDriverWait(driver,10);
+                    wait2.until(ExpectedConditions.visibilityOfElementLocated(By.className("hotels-hotel-review-layout-Section__reorg--2f8Ro")));
                     hotelDoc = Jsoup.parse(driver.getPageSource());
                     driver.quit();
 
@@ -219,6 +221,7 @@ public class Manager {
                     List<String> hotelServices = new ArrayList<>();
                     Elements allHotelServices = hotelDoc.getElementsByClass("hotels-hr-about-amenities-Amenity__amenity--3fbBj");
                     for (Element element : allHotelServices) {
+                        System.out.println("hola");
                         hotelServices.add(element.text());
                     }
                     this.addServicesToCsv(defCsv, hotelServices);
@@ -334,7 +337,6 @@ public class Manager {
                             int colabLevel = 0;
                             if (colaborationLevelElement.size() > 0) {
                                 colabLevel = Integer.parseInt(colaborationLevelElement.text().split(" ")[3]);
-                                System.out.println(colaborationLevelElement.text());
                             }
                             defCsv.put("nivelColaboracion", colabLevel);
                             addRowCSV(defCsv.values().toArray());
@@ -346,7 +348,7 @@ public class Manager {
         }
     }
 
-    private void addRowCSV(Object[] objects) {
+    synchronized private void addRowCSV(Object[] objects) {
         csvDatasetWriter.addRow(objects);
         System.out.println("ESCRITOO");
         csvDatasetWriter.flushAndClose();
