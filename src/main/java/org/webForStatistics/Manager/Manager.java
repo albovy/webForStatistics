@@ -35,14 +35,16 @@ public class Manager {
             driver.get(url.toString());
             this.docHotel = Jsoup.parse(driver.getPageSource()).normalise();
         } finally {
-            driver.close();
+            driver.quit();
         }
         this.csvDatasetWriter = new CSVDatasetWriter("prueba4.csv");
     }
 
     private AtomicInteger getNumPagesFromHotel(Document doc) {
         Elements elementsNumPages = doc.getElementsByClass("pageNum");
-        return new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
+        if (elementsNumPages.size() > 0) {
+            return new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
+        } else return new AtomicInteger(1);
     }
 
     private AtomicInteger getNumPagesHotels() {
@@ -168,7 +170,7 @@ public class Manager {
                 driver.get(nextHotelPage.toString());
                 docHotels = Jsoup.parse(driver.getPageSource()).normalise();
             } finally {
-                driver.close();
+                driver.quit();
             }
             for (Element e : docHotels.getElementsByClass("property_title")) {
                 URL hotel = new URL(String.format("%s://%s%s", this.urlHotel.getProtocol(), this.urlHotel.getHost(), e.attr("href")));
@@ -182,10 +184,10 @@ public class Manager {
                     idHotels.add(idHotel);
                     defCsv.put("#Hotel", idHotel);
                     Document hotelDoc;
-                    do {
-                        hotelDoc = Jsoup.connect(hotel.toString()).userAgent("Mozilla/5.0").get();
-                    } while (hotelDoc.getElementsByClass("hotels-hr-about-amenities-Amenity__name--3MfNu").size() == 0 ||
-                            hotelDoc.getElementsByClass("hotels-hotel-review-about-with-photos-Reviews__overallRating--vElGA").size() == 0);
+                    driver = new FirefoxDriver();
+                    driver.get(hotel.toString());
+                    hotelDoc = Jsoup.parse(driver.getPageSource());
+                    driver.quit();
 
                     String province = hotelDoc.getElementsByClass("link").text().split(" ")[5];
                     defCsv.put("nombreProvincia", province);
@@ -215,7 +217,7 @@ public class Manager {
                     defCsv.put("categoriaHotel", catHotel);
                     //List of hotel services
                     List<String> hotelServices = new ArrayList<>();
-                    Elements allHotelServices = hotelDoc.getElementsByClass("hotels-hr-about-amenities-Amenity__name--3MfNu");
+                    Elements allHotelServices = hotelDoc.getElementsByClass("hotels-hr-about-amenities-Amenity__amenity--3fbBj");
                     for (Element element : allHotelServices) {
                         hotelServices.add(element.text());
                     }
@@ -260,24 +262,30 @@ public class Manager {
                                 e1.printStackTrace();
                             }
                             System.out.println(commentPage);
-
+                            boolean stop;
                             WebDriver driver1;
-                            //commentPageDoc = Jsoup.connect(commentPage.toExternalForm()).userAgent("Mozilla/5.0").get();
-                            driver1 = new FirefoxDriver();
-                            driver1.get(commentPage.toString());
-                            WebDriverWait wait = new WebDriverWait(driver1, 50);
-                            wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("reviewSelector")));
-                            wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("date_picker_modal")));
-                            Actions builder = new Actions(driver1);
-                            driver1.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
-                            WebElement webElement = driver1.findElements(By.className("info_text")).get(0);
+                            Document commentPageDoc = null;
+                            do {
+                                stop = true;
+                                //commentPageDoc = Jsoup.connect(commentPage.toExternalForm()).userAgent("Mozilla/5.0").get();
+                                driver1 = new FirefoxDriver();
+                                try {
+                                    driver1.get(commentPage.toString());
+                                    WebDriverWait wait = new WebDriverWait(driver1, 10);
+                                    wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("reviewSelector")));
+                                    wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("date_picker_modal")));
+                                    Actions builder = new Actions(driver1);
+                                    driver1.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
+                                    WebElement webElement = driver1.findElements(By.className("info_text")).get(0);
 
-                            //WebElement webElement1 = driver1.findElement(By.className("memberOverlayRedesign")).findElement(By.tagName("a"));
-                            builder.moveToElement(webElement).click().build().perform();
-                            wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("g10n")));
-
-                            Document commentPageDoc = Jsoup.parse(driver1.getPageSource());
-                            driver1.close();
+                                    builder.moveToElement(webElement).click().build().perform();
+                                    wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("g10n")));
+                                    commentPageDoc = Jsoup.parse(driver1.getPageSource());
+                                } catch (Exception exp) {
+                                    stop = false;
+                                }
+                                driver1.quit();
+                            } while (!stop);
 
                             String titleComment = commentPageDoc.getElementById("HEADING").text();
                             defCsv.put("tituloComentario", titleComment);
