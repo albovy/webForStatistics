@@ -272,14 +272,13 @@ public class Manager {
                             try {
                                 driver = new FirefoxDriver();
                                 driver.get(commentPage.toString());
-                                WebDriverWait wait = new WebDriverWait(driver, 300);
+                                WebDriverWait wait = new WebDriverWait(driver, 10);
                                 wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("reviewSelector")));
                                 wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("date_picker_modal")));
                                 Actions builder = new Actions(driver);
                                 driver.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
                                 WebElement webElement = driver.findElements(By.className("info_text")).get(0);
 
-                                //WebElement webElement1 = driver.findElement(By.className("memberOverlayRedesign")).findElement(By.tagName("a"));
                                 builder.moveToElement(webElement).click().build().perform();
                                 wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("g10n")));
                                 commentPageDoc = Jsoup.parse(driver.getPageSource());;
