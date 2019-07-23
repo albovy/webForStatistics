@@ -42,7 +42,7 @@ public class Manager {
     private AtomicInteger getNumPagesFromHotel(Document doc) {
         Elements elementsNumPages = doc.getElementsByClass("pageNum");
         if (elementsNumPages.size() > 0) {
-            return new AtomicInteger(1);//new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
+            return new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
         } else return new AtomicInteger(1);
     }
 
@@ -374,7 +374,7 @@ public class Manager {
                             }
 
                         }
-                        numPagesHotels.decrementAndGet();
+                        numPages.decrementAndGet();
                     }
                 }
             }
