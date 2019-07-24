@@ -7,8 +7,10 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -48,7 +50,7 @@ public class Manager {
 
     private AtomicInteger getNumPagesHotels() {
         Elements elementsNumPages = this.docHotel.getElementsByClass("pageNum");
-        return new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
+        return new AtomicInteger(4);//new AtomicInteger(Integer.parseInt(elementsNumPages.last().text()));
     }
 
     private void initializeCSV(Map<String, Object> map) {
@@ -200,17 +202,22 @@ public class Manager {
                     idHotels.add(idHotel);
                     defCsv.put("#Hotel", idHotel);
                     Document hotelDoc = null;
+                    Document hotelDocTrusting = null;
                     boolean stop2;
                     do {
                         stop2 = true;
                         try {
                             driver = new FirefoxDriver();
                             driver.get(hotel.toString());
-                            WebDriverWait wait2 = new WebDriverWait(driver, 25);
+                            WebDriverWait wait2 = new WebDriverWait(driver, 30);
                             wait2.until(ExpectedConditions.visibilityOfElementLocated(By.className("rebrand_2017")));
                             wait2.until(ExpectedConditions.visibilityOfElementLocated(By.id("HEADING")));
-                            wait2.until(ExpectedConditions.visibilityOfElementLocated(By.className("hotels-review-list-parts-SingleReview__reviewContainer--d54T4")));
+                            wait2.until(ExpectedConditions.visibilityOfElementLocated(By.id("taplc_hr_community_content_0")));
+                            wait2.until(ExpectedConditions.visibilityOfElementLocated(By.className("react-container")));
+                            //Thread.sleep(4000);
                             hotelDoc = Jsoup.parse(driver.getPageSource());
+                            hotelDocTrusting = Jsoup.connect(hotel.toString()).get();
+
                         } catch (Exception exc) {
                             stop2 = false;
                         }
@@ -259,31 +266,41 @@ public class Manager {
                     }
                     //Ubication evaluation
                     evaluationElements = hotelDoc.getElementsByClass("ui_bubble_rating");
-                    float ubicationEvaluation = Float.parseFloat(evaluationElements.get(2).className().split(" ")[1].split("_")[1]) / 10;
+                    float ubicationEvaluation=0,cleanEvaluation=0,serviceEvaluation= 0,worthEvaluation = 0;
+                    if(evaluation!= 0) {
+                        ubicationEvaluation = Float.parseFloat(evaluationElements.get(2).className().split(" ")[1].split("_")[1]) / 10;
+                        //Clean evaluation
+                        if (evaluationElements.size() > 3) {
+                            cleanEvaluation = Float.parseFloat(evaluationElements.get(3).className().split(" ")[1].split("_")[1]) / 10;
+                            //Service evaluation
+                            if (evaluationElements.size()>4) {
+                                serviceEvaluation = Float.parseFloat(evaluationElements.get(4).className().split(" ")[1].split("_")[1]) / 10;
+                                defCsv.put("valoracionServicio", serviceEvaluation);
+                                //worth evaluation
+                                if (evaluationElements.size()>5) {
+                                    worthEvaluation = Float.parseFloat(evaluationElements.get(5).className().split(" ")[1].split("_")[1]) / 10;
+                                }
+                            }
+                        }
+                    }
                     defCsv.put("valoracionUbicacion", ubicationEvaluation);
-                    //Clean evaluation
-                    float cleanEvaluation = Float.parseFloat(evaluationElements.get(3).className().split(" ")[1].split("_")[1]) / 10;
                     defCsv.put("valoracionLimpieza", cleanEvaluation);
-                    //Service evaluation
-                    float serviceEvaluation = Float.parseFloat(evaluationElements.get(4).className().split(" ")[1].split("_")[1]) / 10;
                     defCsv.put("valoracionServicio", serviceEvaluation);
-                    //worth evaluation
-                    float worthEvaluation = Float.parseFloat(evaluationElements.get(5).className().split(" ")[1].split("_")[1]) / 10;
                     defCsv.put("valoracionCalidadPrecio", worthEvaluation);
 
                     defCsv.put("valoracionTotal", evaluation);
-                    AtomicInteger numPages = this.getNumPagesFromHotel(hotelDoc);
+                    AtomicInteger numPages = this.getNumPagesFromHotel(hotelDocTrusting);
                     //Split the url to go to next pages with comment
                     urlSplitted = hotel.toString().split("Reviews");
                     while ((num = numPages.get()) >= 1) {
+                        System.out.println("PAGINA: " + num);
                         //Assignation of the page
                         URL nextPageUrl = new URL(urlSplitted[0] + "Reviews-or" + (num * 5 - 5) + urlSplitted[1]);
                         //Declaration of the parser
-                        Document nextPageDoc = Jsoup.connect(nextPageUrl.toExternalForm()).userAgent("Mozilla/5.0").get().normalise();
+                        Document nextPageDoc = Jsoup.connect(nextPageUrl.toExternalForm()).userAgent("Chrome").get();
                         Elements allCommentsElements = nextPageDoc.getElementsByClass("hotels-review-list-parts-SingleReview__mainCol--2XgHm");
                         if (allCommentsElements.size() == 0 && num == 1) {
                             this.addAfterServices(defCsv);
-                            System.out.println("cuidado");
                             csvDatasetWriter.addRow(defCsv.values().toArray());
                             System.out.println("ESCRITOO");
                             csvDatasetWriter.flushAndClose();
@@ -334,13 +351,24 @@ public class Manager {
                                 }
                                 defCsv.put("votosUtilesComentario", utilVotesComment);
                                 //Get date
-                                String date = commentPageDoc.getElementsByClass("prw_rup prw_reviews_stay_date_hsx").first().text().split(":")[1];
-                                defCsv.put("fecha", String.format("%d/%d", transformDate(date.split(" ")[1]), Integer.parseInt(date.split(" ")[3])));
+                                Elements dateElement = commentPageDoc.getElementsByClass("prw_rup prw_reviews_stay_date_hsx");
+                                String date = " ";
+                                if (dateElement.size() > 0){
+                                    date = dateElement.first().text().split(":")[1];
+                                    defCsv.put("fecha", String.format("%d/%d", transformDate(date.split(" ")[1]), Integer.parseInt(date.split(" ")[3])));
+                                }else {
+                                    defCsv.put("fecha", date);
+                                }
+
                                 //Get rating
                                 int personalEvaluation = Integer.parseInt(commentPageDoc.getElementsByClass("ui_bubble_rating").get(0).className()
                                         .split(" ")[1].split("_")[1]) / 10;
                                 defCsv.put("valoracionIndividual", personalEvaluation);
-                                int typeStay = transformTypeStay(commentPageDoc.getElementsByClass("recommend-titleInline").last().text().split(":")[1]);
+                                Elements typeStayElement = commentPageDoc.getElementsByClass("recommend-titleInline");
+                                int typeStay = 0;
+                                if (typeStayElement.size() > 0) {
+                                    typeStay = transformTypeStay(typeStayElement.last().text().split(":")[1]);
+                                }
                                 defCsv.put("tipoViaje", typeStay);
                                 String commentContent = commentPageDoc.getElementsByClass("fullText").first().text();
                                 defCsv.put("comentario", commentContent);
