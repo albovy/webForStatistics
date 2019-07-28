@@ -32,7 +32,7 @@ public class Manager {
 
     public Manager(URL url) {
         this.urlHotel = url;
-        WebDriver driver = new FirefoxDriver();
+        WebDriver driver = new ChromeDriver();
         try {
             driver.get(url.toString());
             this.docHotel = Jsoup.parse(driver.getPageSource()).normalise();
@@ -183,7 +183,7 @@ public class Manager {
             System.out.println(nextHotelPageString);
             URL nextHotelPage = new URL(nextHotelPageString);
 
-            driver = new FirefoxDriver();
+            driver = new ChromeDriver();
             Document docHotels;
             try {
                 driver.get(nextHotelPage.toString());
@@ -208,7 +208,7 @@ public class Manager {
                     do {
                         stop2 = true;
                         try {
-                            driver = new FirefoxDriver();
+                            driver = new ChromeDriver();
                             driver.get(hotel.toString());
                             WebDriverWait wait2 = new WebDriverWait(driver, 30);
                             wait2.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.className("rebrand_2017")));
@@ -326,7 +326,7 @@ public class Manager {
                                     do {
                                         stop = true;
                                         try {
-                                            driver = new FirefoxDriver();
+                                            driver = new ChromeDriver();
                                             driver.get(commentPage.toString());
                                             WebDriverWait wait = new WebDriverWait(driver, 10);
                                             wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("reviewSelector")));
@@ -392,8 +392,12 @@ public class Manager {
                                     defCsv.put("#Comentario", idUrlComment);
                                     defCsv.put("idComentario", idComment.getAndIncrement());
                                     Element userElement = commentPageDoc.getElementsByClass("prw_rup prw_reviews_member_info_resp_sur").get(0);
+                                    try{
                                     String username = commentPageDoc.getElementsByClass("memberOverlayRedesign g10n").get(0).child(0).attr("href").split("/")[2];
                                     defCsv.put("usuario", username);
+                                    }catch (Exception e1){
+                                        defCsv.put("usuario","");
+                                    }
                                     int userVotes = 0;
                                     if (userElement.getElementsByClass("badgetext").size() == 2) {
                                         userVotes = Integer.parseInt(userElement.getElementsByClass("badgetext").get(1).text());
