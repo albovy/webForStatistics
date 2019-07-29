@@ -268,18 +268,18 @@ public class Manager {
                     }
                     //Ubication evaluation
                     evaluationElements = hotelDoc.getElementsByClass("ui_bubble_rating");
-                    float ubicationEvaluation=0,cleanEvaluation=0,serviceEvaluation= 0,worthEvaluation = 0;
-                    if(evaluation!= 0) {
+                    float ubicationEvaluation = 0, cleanEvaluation = 0, serviceEvaluation = 0, worthEvaluation = 0;
+                    if (evaluation != 0) {
                         ubicationEvaluation = Float.parseFloat(evaluationElements.get(2).className().split(" ")[1].split("_")[1]) / 10;
                         //Clean evaluation
                         if (evaluationElements.size() > 3) {
                             cleanEvaluation = Float.parseFloat(evaluationElements.get(3).className().split(" ")[1].split("_")[1]) / 10;
                             //Service evaluation
-                            if (evaluationElements.size()>4) {
+                            if (evaluationElements.size() > 4) {
                                 serviceEvaluation = Float.parseFloat(evaluationElements.get(4).className().split(" ")[1].split("_")[1]) / 10;
                                 defCsv.put("valoracionServicio", serviceEvaluation);
                                 //worth evaluation
-                                if (evaluationElements.size()>5) {
+                                if (evaluationElements.size() > 5) {
                                     worthEvaluation = Float.parseFloat(evaluationElements.get(5).className().split(" ")[1].split("_")[1]) / 10;
                                 }
                             }
@@ -292,142 +292,142 @@ public class Manager {
 
                     defCsv.put("valoracionTotal", evaluation);
                     AtomicInteger numPages = this.getNumPagesFromHotel(hotelDocTrusting);
-                    //Split the url to go to next pages with comment
-                    urlSplitted = hotel.toString().split("Reviews");
-                    while ((num = numPages.get()) >= 1) {
-                        System.out.println("PAGINA: " + num);
-                        //Assignation of the page
-                        URL nextPageUrl = new URL(urlSplitted[0] + "Reviews-or" + (num * 5 - 5) + urlSplitted[1]);
-                        //Declaration of the parser
-                        boolean stop3 = true;
-                        Document nextPageDoc = null;
-                        do {
-                            stop3 =true;
-                            try {
-                                nextPageDoc = Jsoup.connect(nextPageUrl.toExternalForm()).userAgent("Mozilla/5.0").get();
-                            }catch (Exception ep){
-                                stop3=false;
-                            }
-                        }while (!stop3);
-                        Elements opinionsElements = nextPageDoc.getElementsByClass("hotels-community-content-common-TabBar__tabCount--1vwdQ");
-                        if (opinionsElements.size() == 0){
-                            this.addAfterServices(defCsv);
-                            csvDatasetWriter.addRow(defCsv.values().toArray());
-                            System.out.println("ESCRITOO");
-                            csvDatasetWriter.flushAndClose();
-                            idComment.getAndIncrement();
-                        }else {
+                    Elements countOpinionsElement = hotelDoc.getElementsByClass("hotels-hotel-review-atf-info-parts-Rating__reviewCount--1sk1X");
+                    if (countOpinionsElement.size() == 0 && numPages.get() == 1) {
+                        this.addAfterServices(defCsv);
+                        csvDatasetWriter.addRow(defCsv.values().toArray());
+                        System.out.println("ESCRITOO");
+                        csvDatasetWriter.flushAndClose();
+                        idComment.getAndIncrement();
+                    }else {
+                        //Split the url to go to next pages with comment
+                        urlSplitted = hotel.toString().split("Reviews");
+                        while ((num = numPages.get()) >= 1) {
+                            System.out.println("PAGINA: " + num);
+                            //Assignation of the page
+                            URL nextPageUrl = new URL(urlSplitted[0] + "Reviews-or" + (num * 5 - 5) + urlSplitted[1]);
+                            //Declaration of the parser
+                            boolean stop3 = true;
+                            Document nextPageDoc = null;
+                            do {
+                                stop3 = true;
+                                try {
+                                    nextPageDoc = Jsoup.connect(nextPageUrl.toExternalForm()).userAgent("Mozilla/5.0").get();
+                                } catch (Exception ep) {
+                                    stop3 = false;
+                                }
+                            } while (!stop3);
                             Elements allCommentsElements = nextPageDoc.getElementsByClass("hotels-review-list-parts-SingleReview__mainCol--2XgHm");
-                                for (Element element : allCommentsElements) {
-                                    //Create the URL of a comment
-                                    URL commentPage = new URL(String.format("%s://%s%s", this.urlHotel.getProtocol(), this.urlHotel.getHost(), element.getElementsByClass("hotels-review-list-parts-ReviewTitle__reviewTitleText--3QrTy").attr("href")));
-                                    System.out.println(commentPage);
-                                    boolean stop;
-                                    Document commentPageDoc = null;
-                                    do {
-                                        stop = true;
-                                        try {
-                                            driver = new FirefoxDriver();
-                                            driver.get(commentPage.toString());
-                                            WebDriverWait wait = new WebDriverWait(driver, 10);
-                                            wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("reviewSelector")));
-                                            wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("date_picker_modal")));
-                                            Actions builder = new Actions(driver);
-                                            driver.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
-                                            WebElement webElement = driver.findElements(By.className("info_text")).get(0);
-
-                                            builder.moveToElement(webElement).click().build().perform();
-                                            wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("g10n")));
-                                            commentPageDoc = Jsoup.parse(driver.getPageSource());
-                                        } catch (Exception exception) {
-                                            stop = false;
-                                        }
-                                        driver.quit();
-                                    } while (!stop);
-
-                                    String titleComment = commentPageDoc.getElementById("HEADING").text();
-                                    defCsv.put("tituloComentario", titleComment);
-
-                                    Elements adviceElements = commentPageDoc.getElementsByClass("reviewItem inlineRoomTip");
-                                    String advice = csvDatasetWriter.getStrVoidField();
-                                    if (adviceElements.size() > 0) {
-                                        advice = adviceElements.last().text().split(":")[1];
-                                    }
-                                    defCsv.put("consejos", advice);
-
-                                    Elements utilVotesElement = element.getElementsByClass("social-sections-SocialStatisticsBar__counts--35oyz social-sections-SocialStatisticsBar__item--3Fm5r");
-                                    int utilVotesComment = 0;
-                                    if (utilVotesElement.size() > 0) {
-                                        utilVotesComment = Integer.parseInt(utilVotesElement.text().split(" ")[0]);
-
-                                    }
-                                    defCsv.put("votosUtilesComentario", utilVotesComment);
-                                    //Get date
-                                    Elements dateElement = commentPageDoc.getElementsByClass("prw_rup prw_reviews_stay_date_hsx");
-                                    String date = " ";
+                            for (Element element : allCommentsElements) {
+                                //Create the URL of a comment
+                                URL commentPage = new URL(String.format("%s://%s%s", this.urlHotel.getProtocol(), this.urlHotel.getHost(), element.getElementsByClass("hotels-review-list-parts-ReviewTitle__reviewTitleText--3QrTy").attr("href")));
+                                System.out.println(commentPage);
+                                boolean stop;
+                                Document commentPageDoc = null;
+                                do {
+                                    stop = true;
                                     try {
+                                        driver = new FirefoxDriver();
+                                        driver.get(commentPage.toString());
+                                        WebDriverWait wait = new WebDriverWait(driver, 10);
+                                        wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("reviewSelector")));
+                                        wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("date_picker_modal")));
+                                        Actions builder = new Actions(driver);
+                                        driver.findElement(By.id("taplc_trip_planner_breadcrumbs_0")).click();
+                                        WebElement webElement = driver.findElements(By.className("info_text")).get(0);
 
-                                            date = dateElement.first().text().split(":")[1];
-                                            defCsv.put("fecha", String.format("%d/%d", transformDate(date.split(" ")[1]), Integer.parseInt(date.split(" ")[3])));
-                                    }catch (Exception exp){
-                                        System.out.println("Sin fecha");
-                                    }finally {
-                                        date = " ";
-                                        defCsv.put("fecha",date);
+                                        builder.moveToElement(webElement).click().build().perform();
+                                        wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("g10n")));
+                                        commentPageDoc = Jsoup.parse(driver.getPageSource());
+                                    } catch (Exception exception) {
+                                        stop = false;
                                     }
+                                    driver.quit();
+                                } while (!stop);
 
-                                    //Get rating
-                                    int personalEvaluation = Integer.parseInt(commentPageDoc.getElementsByClass("ui_bubble_rating").get(0).className()
-                                            .split(" ")[1].split("_")[1]) / 10;
-                                    defCsv.put("valoracionIndividual", personalEvaluation);
-                                    Elements typeStayElement = commentPageDoc.getElementsByClass("recommend-titleInline");
-                                    int typeStay = 0;
-                                    if (typeStayElement.size() > 0) {
-                                        typeStay = transformTypeStay(typeStayElement.last().text().split(":")[1]);
-                                    }
-                                    defCsv.put("tipoViaje", typeStay);
-                                    String commentContent = commentPageDoc.getElementsByClass("fullText").first().text();
-                                    defCsv.put("comentario", commentContent);
-                                    //ID comment
-                                    int idUrlComment = Integer.parseInt(commentPage.toString().split("-")[3].substring(1));
-                                    defCsv.put("#Comentario", idUrlComment);
-                                    defCsv.put("idComentario", idComment.getAndIncrement());
-                                    Element userElement = commentPageDoc.getElementsByClass("prw_rup prw_reviews_member_info_resp_sur").get(0);
-                                    try{
-                                    String username = commentPageDoc.getElementsByClass("memberOverlayRedesign g10n").get(0).child(0).attr("href").split("/")[2];
-                                    defCsv.put("usuario", username);
-                                    }catch (Exception e1){
-                                        defCsv.put("usuario","");
-                                    }
-                                    int userVotes = 0;
-                                    if (userElement.getElementsByClass("badgetext").size() == 2) {
-                                        userVotes = Integer.parseInt(userElement.getElementsByClass("badgetext").get(1).text());
+                                String titleComment = commentPageDoc.getElementById("HEADING").text();
+                                defCsv.put("tituloComentario", titleComment);
 
-                                    }
-                                    Elements userContriElements = userElement.getElementsByClass("badgetext");
-                                    int userContributions = 0;
-                                    if(userContriElements.size()>0) {
-                                        userContributions = Integer.parseInt(userContriElements.get(0).text());
-                                    }
-                                    defCsv.put("votosUtilesUsuario", userVotes);
-                                    defCsv.put("contribucionesUsuario", userContributions);
-                                    Elements colaborationLevelElement = commentPageDoc.getElementsByClass("badgeinfo");
-                                    int colabLevel = 0;
-                                    if (colaborationLevelElement.size() > 0) {
-                                        colabLevel = Integer.parseInt(colaborationLevelElement.text().split(" ")[3]);
-                                        System.out.println(colaborationLevelElement.text());
-                                    }
-                                    defCsv.put("nivelColaboracion", colabLevel);
+                                Elements adviceElements = commentPageDoc.getElementsByClass("reviewItem inlineRoomTip");
+                                String advice = csvDatasetWriter.getStrVoidField();
+                                if (adviceElements.size() > 0) {
+                                    advice = adviceElements.last().text().split(":")[1];
+                                }
+                                defCsv.put("consejos", advice);
 
-                                    System.out.println("hola=");
-                                    csvDatasetWriter.addRow(defCsv.values().toArray());
-                                    System.out.println("ESCRITOO");
-                                    csvDatasetWriter.flushAndClose();
+                                Elements utilVotesElement = element.getElementsByClass("social-sections-SocialStatisticsBar__counts--35oyz social-sections-SocialStatisticsBar__item--3Fm5r");
+                                int utilVotesComment = 0;
+                                if (utilVotesElement.size() > 0) {
+                                    utilVotesComment = Integer.parseInt(utilVotesElement.text().split(" ")[0]);
+
+                                }
+                                defCsv.put("votosUtilesComentario", utilVotesComment);
+                                //Get date
+                                Elements dateElement = commentPageDoc.getElementsByClass("prw_rup prw_reviews_stay_date_hsx");
+                                String date = " ";
+                                try {
+
+                                    date = dateElement.first().text().split(":")[1];
+                                    defCsv.put("fecha", String.format("%d/%d", transformDate(date.split(" ")[1]), Integer.parseInt(date.split(" ")[3])));
+                                } catch (Exception exp) {
+                                    System.out.println("Sin fecha");
+                                } finally {
+                                    date = " ";
+                                    defCsv.put("fecha", date);
                                 }
 
+                                //Get rating
+                                int personalEvaluation = Integer.parseInt(commentPageDoc.getElementsByClass("ui_bubble_rating").get(0).className()
+                                        .split(" ")[1].split("_")[1]) / 10;
+                                defCsv.put("valoracionIndividual", personalEvaluation);
+                                Elements typeStayElement = commentPageDoc.getElementsByClass("recommend-titleInline");
+                                int typeStay = 0;
+                                if (typeStayElement.size() > 0) {
+                                    typeStay = transformTypeStay(typeStayElement.last().text().split(":")[1]);
+                                }
+                                defCsv.put("tipoViaje", typeStay);
+                                String commentContent = commentPageDoc.getElementsByClass("fullText").first().text();
+                                defCsv.put("comentario", commentContent);
+                                //ID comment
+                                int idUrlComment = Integer.parseInt(commentPage.toString().split("-")[3].substring(1));
+                                defCsv.put("#Comentario", idUrlComment);
+                                defCsv.put("idComentario", idComment.getAndIncrement());
+                                Element userElement = commentPageDoc.getElementsByClass("prw_rup prw_reviews_member_info_resp_sur").get(0);
+                                try {
+                                    String username = commentPageDoc.getElementsByClass("memberOverlayRedesign g10n").get(0).child(0).attr("href").split("/")[2];
+                                    defCsv.put("usuario", username);
+                                } catch (Exception e1) {
+                                    defCsv.put("usuario", "");
+                                }
+                                int userVotes = 0;
+                                if (userElement.getElementsByClass("badgetext").size() == 2) {
+                                    userVotes = Integer.parseInt(userElement.getElementsByClass("badgetext").get(1).text());
 
+                                }
+                                Elements userContriElements = userElement.getElementsByClass("badgetext");
+                                int userContributions = 0;
+                                if (userContriElements.size() > 0) {
+                                    userContributions = Integer.parseInt(userContriElements.get(0).text());
+                                }
+                                defCsv.put("votosUtilesUsuario", userVotes);
+                                defCsv.put("contribucionesUsuario", userContributions);
+                                Elements colaborationLevelElement = commentPageDoc.getElementsByClass("badgeinfo");
+                                int colabLevel = 0;
+                                if (colaborationLevelElement.size() > 0) {
+                                    colabLevel = Integer.parseInt(colaborationLevelElement.text().split(" ")[3]);
+                                    System.out.println(colaborationLevelElement.text());
+                                }
+                                defCsv.put("nivelColaboracion", colabLevel);
+
+                                System.out.println("hola=");
+                                csvDatasetWriter.addRow(defCsv.values().toArray());
+                                System.out.println("ESCRITOO");
+                                csvDatasetWriter.flushAndClose();
+                            }
+
+
+                            numPages.decrementAndGet();
                         }
-                        numPages.decrementAndGet();
                     }
                 }
             }
