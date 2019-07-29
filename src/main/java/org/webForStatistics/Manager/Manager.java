@@ -32,14 +32,14 @@ public class Manager {
 
     public Manager(URL url) {
         this.urlHotel = url;
-        WebDriver driver = new ChromeDriver();
+        WebDriver driver = new FirefoxDriver();
         try {
             driver.get(url.toString());
             this.docHotel = Jsoup.parse(driver.getPageSource()).normalise();
         } finally {
             driver.quit();
         }
-        this.csvDatasetWriter = new CSVDatasetWriter("prueba6.csv");
+        this.csvDatasetWriter = new CSVDatasetWriter("prueba7.csv");
     }
 
     private AtomicInteger getNumPagesFromHotel(Document doc) {
@@ -183,7 +183,7 @@ public class Manager {
             System.out.println(nextHotelPageString);
             URL nextHotelPage = new URL(nextHotelPageString);
 
-            driver = new ChromeDriver();
+            driver = new FirefoxDriver();
             Document docHotels;
             try {
                 driver.get(nextHotelPage.toString());
@@ -208,7 +208,7 @@ public class Manager {
                     do {
                         stop2 = true;
                         try {
-                            driver = new ChromeDriver();
+                            driver = new FirefoxDriver();
                             driver.get(hotel.toString());
                             WebDriverWait wait2 = new WebDriverWait(driver, 30);
                             wait2.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.className("rebrand_2017")));
@@ -315,6 +315,7 @@ public class Manager {
                             csvDatasetWriter.addRow(defCsv.values().toArray());
                             System.out.println("ESCRITOO");
                             csvDatasetWriter.flushAndClose();
+                            idComment.getAndIncrement();
                         }else {
                             Elements allCommentsElements = nextPageDoc.getElementsByClass("hotels-review-list-parts-SingleReview__mainCol--2XgHm");
                                 for (Element element : allCommentsElements) {
@@ -326,7 +327,7 @@ public class Manager {
                                     do {
                                         stop = true;
                                         try {
-                                            driver = new ChromeDriver();
+                                            driver = new FirefoxDriver();
                                             driver.get(commentPage.toString());
                                             WebDriverWait wait = new WebDriverWait(driver, 10);
                                             wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("reviewSelector")));
