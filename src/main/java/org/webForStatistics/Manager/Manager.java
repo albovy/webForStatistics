@@ -1,5 +1,12 @@
 package org.webForStatistics.Manager;
 
+import com.google.gson.GsonBuilder;
+import com.google.maps.FindPlaceFromTextRequest;
+import com.google.maps.GeoApiContext;
+import com.google.maps.PlacesApi;
+import com.google.maps.errors.ApiException;
+import com.google.maps.model.FindPlaceFromText;
+import com.google.maps.model.PlaceDetails;
 import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
 import org.bdp4j.util.CSVDatasetWriter;
 
@@ -24,7 +31,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Manager of hotels
+ * Manager of hotels in TripAdvisor
  *
  * @author Alejandro Borrajo Viéitez
  */
@@ -50,8 +57,8 @@ public class Manager {
         } finally {
             driver.quit();
         }
-        this.csvDatasetWriter = new CSVDatasetWriter("prueba2.csv");
-        this.csvUbicationWriter = new CSVDatasetWriter("prueba2-ubication.csv");
+        this.csvDatasetWriter = new CSVDatasetWriter("prueba.csv");
+        this.csvUbicationWriter = new CSVDatasetWriter("prueba-ubication.csv");
     }
 
     /**
@@ -113,7 +120,7 @@ public class Manager {
         csvDatasetWriter.addColumns(columns, map.values().toArray());
     }
 
-    private void initializeUbicationCSV(Map<String,Object> map) {
+    private void initializeUbicationCSV(Map<String, Object> map) {
         map.put("nombreHotel", "");
         map.put("lat", "");
         map.put("lng", "");
@@ -242,7 +249,7 @@ public class Manager {
      */
     public void run() throws IOException {
         Map<String, Object> defCsv = new LinkedHashMap<>();
-        Map<String,Object> ubicationCsv = new LinkedHashMap<>();
+        Map<String, Object> ubicationCsv = new LinkedHashMap<>();
         this.initializeCSV(defCsv);
         this.initializeUbicationCSV(ubicationCsv);
         //Return all pages of hotels
@@ -291,7 +298,7 @@ public class Manager {
                             driver = new FirefoxDriver();
                             driver.get(hotel.toString());
                             //Waits for JavaScript
-                            WebDriverWait wait2 = new WebDriverWait(driver, 30);
+                            WebDriverWait wait2 = new WebDriverWait(driver, 15);
                             wait2.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.className("rebrand_2017")));
                             wait2.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.id("HEADING")));
                             wait2.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.id("taplc_hr_community_content_0")));
@@ -322,30 +329,50 @@ public class Manager {
                     //Name hotel
                     String nameHotel = hotelDoc.getElementById("HEADING").text();
                     defCsv.put("nombreHotel", nameHotel);
-                    ubicationCsv.put("nombreHotel",nameHotel);
-
-                    String street = hotelDoc.getElementsByClass("public-business-listing-ContactInfo__ui_link--1_7Zp public-business-listing-ContactInfo__level_4--3JgmI").text();
+                    ubicationCsv.put("nombreHotel", nameHotel);
+                    String street = "";
+                    FindPlaceFromTextRequest.InputType inputType = FindPlaceFromTextRequest.InputType.PHONE_NUMBER;
+                    if(hotelDoc.getElementsByClass("public-business-listing-ContactInfo__nonWebLinkText--nGymU public-business-listing-ContactInfo__ui_link--1_7Zp public-business-listing-ContactInfo__level_4--3JgmI").size() >0){
+                        street = hotelDoc.getElementsByClass("public-business-listing-ContactInfo__nonWebLinkText--nGymU public-business-listing-ContactInfo__ui_link--1_7Zp public-business-listing-ContactInfo__level_4--3JgmI").get(0).text();
+                    }else {
+                        if (hotelDoc.getElementsByClass("public-business-listing-ContactInfo__ui_link--1_7Zp public-business-listing-ContactInfo__level_4--3JgmI").size() > 0) {
+                            street = hotelDoc.getElementsByClass("public-business-listing-ContactInfo__ui_link--1_7Zp public-business-listing-ContactInfo__level_4--3JgmI").get(0).text();
+                            inputType = FindPlaceFromTextRequest.InputType.TEXT_QUERY;
+                        }
+                    }
                     System.out.println(street);
                     //Ubication
-                    WebDriver ubicationDriver = new FirefoxDriver();
-
-                    URL ubicationUrl = new URL("https://www.latlong.net/");
-                    ubicationDriver.get(ubicationUrl.toString());
-                    WebElement input = ubicationDriver.findElement(By.id("place"));
-                    input.sendKeys(street);
-                    WebElement find = ubicationDriver.findElement(By.id("btnfind"));
-                    find.click();
-                    WebDriverWait waitUbication = new WebDriverWait(ubicationDriver,10);
-                    waitUbication.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.className("col-7")));
-                    Document ubicationDoc = Jsoup.parse(ubicationDriver.getPageSource());
-                    ubicationDriver.quit();
-                    Element ubiElement = ubicationDoc.getElementById("latlngspan");
-                    String textUbi = ubiElement.text().replaceAll("[()]","");
-                    textUbi = textUbi.replaceAll(" ","");
-
-                    ubicationCsv.put("lat",textUbi.split(",")[0]);
-                    ubicationCsv.put("lng",textUbi.split(",")[1]);
-
+                    if (!street.equals("")) {
+                        GeoApiContext context = new GeoApiContext.Builder()
+                                .apiKey("AIzaSyA4Nn-9ULHutLrGoANfUzHYAssOcmRrIu0")
+                                .build();
+                        System.out.println("llega");
+                        FindPlaceFromText results = null;
+                        try {
+                            results = PlacesApi.findPlaceFromText(context, street, inputType).await();
+                        } catch (ApiException ex) {
+                            ex.printStackTrace();
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
+                        PlaceDetails prueba = null;
+                        if(results.candidates.length > 0) {
+                            try {
+                                prueba = PlacesApi.placeDetails(context, results.candidates[0].placeId).await();
+                            } catch (ApiException | InterruptedException ex) {
+                                ex.printStackTrace();
+                            }
+                            assert prueba != null;
+                            ubicationCsv.put("lat", prueba.geometry.location.lat);
+                            ubicationCsv.put("lng", prueba.geometry.location.lng);
+                        }else{
+                            ubicationCsv.put("lat", "");
+                            ubicationCsv.put("lng", "");
+                        }
+                    } else {
+                        ubicationCsv.put("lat", "");
+                        ubicationCsv.put("lng", "");
+                    }
 
                     csvUbicationWriter.addRow(ubicationCsv.values().toArray());
                     System.out.println("UBICACION ESCRITA");
@@ -554,8 +581,6 @@ public class Manager {
                                 System.out.println("ESCRITOO");
                                 csvDatasetWriter.flushAndClose();
                             }
-
-
                             numPages.decrementAndGet();
                         }
                     }
