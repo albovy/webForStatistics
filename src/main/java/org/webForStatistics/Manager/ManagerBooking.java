@@ -179,8 +179,14 @@ public class ManagerBooking {
                                     float infividualValoration = 0;
                                     infividualValoration = Float.parseFloat(element1.getElementsByClass("bui-review-score__badge").text().replace(",","."));
                                     System.out.println("Valoración individual: "+infividualValoration);
-
-
+                                    String date = element1.getElementsByClass("c-review-block__date").get(1).text();
+                                    System.out.println("fecha: "+date);
+                                    if (element1.getElementsByClass("review-helpful__vote-feedback-message review-helpful-heart-vote-feedback-message review-helpful__vote-others-helpful ").size() >0 &&
+                                    !element1.getElementsByClass("review-helpful__vote-feedback-message review-helpful-heart-vote-feedback-message review-helpful__vote-others-helpful ").get(0).hasAttr("style")) {
+                                        System.out.println(element1.getElementsByClass("review-helpful__vote-feedback-message review-helpful-heart-vote-feedback-message review-helpful__vote-others-helpful ").get(0).getElementsByTag("strong").text());
+                                    }else{
+                                        System.out.println("no hay");
+                                    }
                                 }
                             }
                         }
