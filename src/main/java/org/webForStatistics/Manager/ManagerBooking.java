@@ -136,14 +136,23 @@ public class ManagerBooking {
                         } while (!stop);
                         HashMap<String,Object> valorations = new LinkedHashMap<>();
                         valorations.put("Personal","");
-                        valorations.put("Intalaciones y servicios","");
+                        valorations.put("Instalaciones y servicios","");
                         valorations.put("Limpieza","");
                         valorations.put("Confort","");
                         valorations.put("Relación calidad - precio","");
-                        valorations.put("Ubicación ","");
+                        valorations.put("Ubicación","");
                         valorations.put("WiFi gratis","");
                         if(numComments > 0){
-
+                            for(Element element1: docFromHotel.getElementsByClass("v2_review-scores__subscore")){
+                                System.out.println(element1.getElementsByClass("c-score-bar__title").text());
+                                String value=element1.getElementsByClass("c-score-bar__score").text();
+                                if (value.contains(",")){
+                                    value = value.replace(",",".");
+                                }
+                                valorations.put(element1.getElementsByClass("c-score-bar__title").text(),value);
+                            }
+                            System.out.println(valorations.values()
+                            );
                         }
                         if (!moreThanOne) {
                             Elements elements = docFromHotel.getElementsByClass("review_list_new_item_block");
